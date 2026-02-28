@@ -35,7 +35,7 @@ import {
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useAdmin } from '@/context/AdminContext';
-import logoImg from '@/assets/logo-topmanuais.com.br.png';
+import logoImg from '@/assets/logo-topmanuais.com.br.webp';
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
