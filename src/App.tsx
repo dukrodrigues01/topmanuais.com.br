@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 // Providers
 import { AdminProvider, useAdmin } from '@/context/AdminContext';
 import { CartProvider } from '@/context/CartContext';
-import { AuthProvider } from '@/context/AuthProvider';
+import { AuthProvider } from '@/context/AuthContext'; // CORRIGIDO: Era AuthProvider
 import { CheckoutProvider } from '@/context/CheckoutContext';
 
 // Páginas

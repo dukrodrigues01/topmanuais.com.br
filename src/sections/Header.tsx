@@ -98,11 +98,6 @@ export function Header() {
             <img 
               src={logoImg} 
               alt="Top Manuais" 
-              {/* Ajuste de tamanho da logo:
-                  No topo: h-20 (80px) -> era h-16 (64px)
-                  No scroll: h-14 (56px) -> era h-12 (48px)
-                  Também adicionei w-auto para manter a proporção.
-              */}
               className={`transition-all duration-300 object-contain w-auto ${
                 isScrolled ? 'h-14' : 'h-20'
               } group-hover:scale-105`} 
