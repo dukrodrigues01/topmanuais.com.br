@@ -45,7 +45,7 @@ export function Header() {
   
   const location = useLocation();
   const navigate = useNavigate();
-  const { cart, itemCount, removeItem, updateQuantity } = useCart();
+  const { cart, itemCount, removeItem } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
   const { categories } = useAdmin();
 
@@ -90,15 +90,21 @@ export function Header() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-[60px]">
+        {/* Aumentei a altura do container de 60px para 80px para acomodar a logo maior */}
+        <div className="flex items-center justify-between h-[80px] transition-all duration-300">
           
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group shrink-0">
             <img 
               src={logoImg} 
               alt="Top Manuais" 
-              className={`transition-all duration-300 object-contain ${
-                isScrolled ? 'h-12' : 'h-16'
+              {/* Ajuste de tamanho da logo:
+                  No topo: h-20 (80px) -> era h-16 (64px)
+                  No scroll: h-14 (56px) -> era h-12 (48px)
+                  Também adicionei w-auto para manter a proporção.
+              */}
+              className={`transition-all duration-300 object-contain w-auto ${
+                isScrolled ? 'h-14' : 'h-20'
               } group-hover:scale-105`} 
             />
           </Link>
@@ -156,13 +162,13 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {/* Search */}
+            {/* Search Desktop */}
             <div className={`hidden md:flex items-center relative transition-all duration-500 ${isSearchOpen ? 'w-72' : 'w-10'}`}>
               {isSearchOpen ? (
                 <form onSubmit={handleSearch} className="relative w-full">
                   <Input
                     type="text"
-                    placeholder="O que você precisa consertar?"
+                    placeholder="O que você precisa?"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-10 h-11 rounded-2xl border-gray-200 bg-gray-50/50 focus:bg-white"
@@ -180,7 +186,7 @@ export function Header() {
               )}
             </div>
 
-            {/* Cart - VERSÃO COMPLETA RESTAURADA */}
+            {/* Cart */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-blue-50 group">
@@ -208,10 +214,7 @@ export function Header() {
                       <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-gray-300">
                         <ShoppingCart size={40} />
                       </div>
-                      <div>
-                        <p className="text-lg font-bold text-gray-900">Carrinho Vazio</p>
-                        <p className="text-sm text-gray-500">Você ainda não adicionou nenhum manual.</p>
-                      </div>
+                      <p className="text-lg font-bold text-gray-900">Carrinho Vazio</p>
                       <Button onClick={() => navigate('/manuais')} className="bg-blue-600 rounded-xl px-8 font-bold">
                         Começar a Comprar
                       </Button>
@@ -242,12 +245,8 @@ export function Header() {
                 </div>
 
                 {cart.items.length > 0 && (
-                  <SheetFooter className="p-6 bg-white border-t flex-col sm:flex-col gap-4">
+                  <SheetFooter className="p-6 bg-white border-t flex-col gap-4">
                     <div className="w-full space-y-2">
-                      <div className="flex justify-between text-sm text-gray-500 font-medium">
-                        <span>Subtotal</span>
-                        <span>R$ {cart.total.toFixed(2)}</span>
-                      </div>
                       <div className="flex justify-between items-center pt-2">
                         <span className="text-lg font-bold text-gray-900">Total</span>
                         <span className="text-2xl font-black text-blue-600">R$ {cart.total.toFixed(2)}</span>
@@ -262,17 +261,18 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            {/* Perfil */}
-            {isAuthenticated ? (
-               <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
+            {/* Perfil Desktop */}
+            <div className="hidden sm:block">
+              {isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="rounded-full p-0 h-10 w-10 border-2 border-transparent hover:border-blue-100">
                       <div className="h-full w-full bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center text-white font-bold text-sm">
                         {user?.name?.charAt(0)}
                       </div>
                     </Button>
-                 </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end" className="w-64 mt-2 p-2 rounded-2xl shadow-2xl">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 mt-2 p-2 rounded-2xl shadow-2xl">
                     <div className="px-3 py-3 border-b border-gray-50 mb-2">
                       <p className="font-black text-gray-900 leading-none">{user?.name}</p>
                       <p className="text-xs text-gray-500 mt-1 truncate">{user?.email}</p>
@@ -286,18 +286,85 @@ export function Header() {
                     <DropdownMenuItem asChild className="rounded-xl"><Link to="/pedidos" className="py-2.5 font-bold">Meus Manuais</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout} className="text-red-600 font-black cursor-pointer rounded-xl py-2.5">Sair da Conta</DropdownMenuItem>
-                 </DropdownMenuContent>
-               </DropdownMenu>
-            ) : (
-              <Button onClick={() => navigate('/login')} className="hidden sm:flex bg-blue-600 hover:bg-blue-700 font-black px-8 rounded-full shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
-                Entrar
-              </Button>
-            )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button onClick={() => navigate('/login')} className="bg-blue-600 hover:bg-blue-700 font-black px-8 rounded-full shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
+                  Entrar
+                </Button>
+              )}
+            </div>
 
-            {/* Mobile Menu Toggle */}
-            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden rounded-full">
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </Button>
+            {/* Mobile Menu Toggle (RESTAURADO E FUNCIONAL) */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden rounded-full">
+                  <Menu size={24} className="text-gray-700" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] p-0 flex flex-col border-r-0">
+                <SheetHeader className="p-6 border-b text-left bg-gray-50/50">
+                  <SheetTitle className="flex items-center gap-2 font-black text-xl">
+                    {/* Mantive a logo menor no menu lateral para não ocupar muito espaço */}
+                    <img src={logoImg} alt="Logo" className="h-10 w-auto" />
+                  </SheetTitle>
+                </SheetHeader>
+                
+                <div className="flex-1 overflow-y-auto py-4">
+                  <nav className="flex flex-col px-2 gap-1">
+                    {navItems.map((item) => (
+                      <div key={item.label}>
+                        <Link
+                          to={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all ${
+                            location.pathname === item.href ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {item.label}
+                          <ArrowRight size={18} className="opacity-20" />
+                        </Link>
+                        
+                        {item.dropdown && (
+                          <div className="ml-6 mt-1 mb-2 border-l-2 border-gray-100 space-y-1">
+                            {item.dropdown.map(sub => (
+                              <Link
+                                key={sub.label}
+                                to={sub.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="block px-4 py-2 text-sm font-semibold text-gray-500 hover:text-blue-600"
+                              >
+                                {sub.label}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </nav>
+                </div>
+
+                <div className="p-6 border-t bg-gray-50/50">
+                  {isAuthenticated ? (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {logout(); setIsMobileMenuOpen(false)}}
+                      className="w-full border-red-100 text-red-600 font-bold rounded-xl"
+                    >
+                      <LogOut size={18} className="mr-2" /> Sair da Conta
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => {navigate('/login'); setIsMobileMenuOpen(false)}} 
+                      className="w-full bg-blue-600 font-black rounded-xl h-12"
+                    >
+                      Acessar Minha Conta
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
           </div>
         </div>
       </div>

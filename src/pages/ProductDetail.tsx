@@ -1,5 +1,5 @@
-// Product Detail Page
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async'; // SEO/AEO
 import { 
   ShoppingCart, 
   Star, 
@@ -9,7 +9,8 @@ import {
   Clock,
   ChevronRight,
   Heart,
-  Share2
+  Share2,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +19,7 @@ import { Header } from '@/sections/Header';
 import { Footer } from '@/sections/Footer';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { getManualById, getRelatedManuals } from '@/data/mockData';
+import { useAdmin } from '@/context/AdminContext'; // Importar contexto do Admin
 import { toast } from 'sonner';
 
 export function ProductDetail() {
@@ -26,25 +27,24 @@ export function ProductDetail() {
   const navigate = useNavigate();
   const { addToCart, isInCart } = useCart();
   const { isAuthenticated, addToFavorites, removeFromFavorites, isFavorite } = useAuth();
+  const { products } = useAdmin(); // Pega os produtos do estado global (atualizados)
   
-  const manual = getManualById(id || '');
-  const relatedManuals = manual ? getRelatedManuals(manual, 4) : [];
+  // Busca o produto pelo ID ou pelo Slug (importante para SEO)
+  const manual = products.find(p => p.id === id || p.slug === id);
+  
+  // Lógica para manuais relacionados baseada na mesma categoria
+  const relatedManuals = products
+    .filter(p => p.category === manual?.category && p.id !== manual?.id)
+    .slice(0, 4);
 
   if (!manual) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="pt-[70px]">
-          <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Manual não encontrado
-            </h1>
-            <p className="text-gray-600 mb-6">
-              O manual que você está procurando não existe ou foi removido.
-            </p>
-            <Button onClick={() => navigate('/manuais')}>
-              Ver todos os manuais
-            </Button>
+        <main className="pt-[70px] flex items-center justify-center h-[60vh]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Manual não encontrado</h1>
+            <Button onClick={() => navigate('/manuais')}>Explorar Loja</Button>
           </div>
         </main>
         <Footer />
@@ -52,343 +52,162 @@ export function ProductDetail() {
     );
   }
 
-  const handleAddToCart = () => {
-    addToCart(manual);
-  };
-
-  const handleFavorite = () => {
-    if (!isAuthenticated) {
-      toast.info('Faça login para adicionar aos favoritos');
-      navigate('/login');
-      return;
-    }
-    
-    if (isFavorite(manual.id)) {
-      removeFromFavorites(manual.id);
-    } else {
-      addToFavorites(manual.id);
-    }
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: manual.title,
-        text: manual.description,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copiado para a área de transferência!');
+  // --- ESTRUTURA JSON-LD PARA GOOGLE E IA (AEO) ---
+  const schemaData = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "@id": `${window.location.origin}/#/manual/${manual.slug || manual.id}#product`,
+    "name": manual.title,
+    "image": manual.image,
+    "description": manual.seoDescription || manual.description?.substring(0, 160),
+    "sku": manual.id,
+    "brand": {
+      "@type": "Brand",
+      "name": manual.brand || "Top Manuais"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": window.location.href,
+      "priceCurrency": "BRL",
+      "price": manual.price,
+      "availability": "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition"
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* --- INJEÇÃO DE SEO & AEO --- */}
+      <Helmet>
+        <title>{manual.seoTitle || `${manual.title} | Top Manuais`}</title>
+        <meta name="description" content={manual.seoDescription || manual.description?.substring(0, 160)} />
+        <meta name="keywords" content={manual.focusKeywords} />
+        <meta property="og:title" content={manual.title} />
+        <meta property="og:image" content={manual.image} />
+        <meta property="og:type" content="product" />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
+      </Helmet>
+
       <Header />
       
       <main className="pt-[70px]">
-        {/* Breadcrumb */}
-        <div className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <nav className="flex items-center gap-2 text-sm text-gray-500">
-              <Link to="/" className="hover:text-[#007fff]">Home</Link>
-              <ChevronRight className="w-4 h-4" />
-              <Link to="/manuais" className="hover:text-[#007fff]">Manuais</Link>
-              <ChevronRight className="w-4 h-4" />
-              <Link to={`/categoria/${manual.category}`} className="hover:text-[#007fff] capitalize">
-                {manual.category}
-              </Link>
-              <ChevronRight className="w-4 h-4" />
-              <span className="text-gray-900 truncate max-w-[200px]">{manual.title}</span>
-            </nav>
+        {/* Breadcrumb Otimizado */}
+        <div className="bg-white border-b hidden md:block">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-tighter">
+            <Link to="/" className="hover:text-blue-600">Home</Link>
+            <ChevronRight size={14} />
+            <Link to="/manuais" className="hover:text-blue-600">Manuais</Link>
+            <ChevronRight size={14} />
+            <span className="text-blue-600">{manual.category}</span>
           </div>
         </div>
 
-        {/* Product Details */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Left Column - Images */}
-            <div className="space-y-4">
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-white shadow-lg">
-                <img
-                  src={manual.image}
-                  alt={manual.title}
-                  className="w-full h-full object-cover"
-                />
-                {manual.originalPrice && (
-                  <Badge className="absolute top-4 left-4 bg-red-500 text-white border-0 text-sm px-3 py-1">
-                    -{Math.round((1 - manual.price / manual.originalPrice) * 100)}% OFF
-                  </Badge>
-                )}
+          <div className="grid lg:grid-cols-12 gap-12">
+            
+            {/* Coluna Esquerda - Imagem */}
+            <div className="lg:col-span-5">
+              <div className="sticky top-24 space-y-4">
+                <div className="aspect-[3/4] rounded-[32px] overflow-hidden bg-white shadow-2xl border border-gray-100 group">
+                  <img src={manual.image} alt={manual.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                </div>
+                <div className="flex gap-3 justify-center">
+                   <Badge className="bg-green-50 text-green-700 border-green-100 px-4 py-2 rounded-full flex gap-2">
+                     <CheckCircle2 size={14}/> Produto Original
+                   </Badge>
+                </div>
               </div>
             </div>
 
-            {/* Right Column - Info */}
-            <div className="space-y-6">
-              {/* Category & Brand */}
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary" className="capitalize">
-                  {manual.category}
-                </Badge>
-                <Badge variant="outline">{manual.brand}</Badge>
-                {manual.year && (
-                  <Badge variant="outline">{manual.year}</Badge>
-                )}
-              </div>
-
-              {/* Title */}
-              <h1 className="text-3xl font-bold text-gray-900">
-                {manual.title}
-              </h1>
-
-              {/* Rating */}
-              <div className="flex items-center gap-4">
+            {/* Coluna Direita - Info */}
+            <div className="lg:col-span-7 space-y-8">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <div className="flex">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-5 h-5 ${
-                          i < Math.floor(manual.rating)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-200'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="font-medium text-gray-900">{manual.rating}</span>
+                  <Badge className="bg-blue-600">{manual.brand}</Badge>
+                  <Badge variant="outline" className="text-gray-500">{manual.format || 'PDF'}</Badge>
                 </div>
-                <span className="text-gray-500">({manual.reviewCount} avaliações)</span>
-                <span className="text-gray-300">|</span>
-                <span className="text-gray-500">{manual.salesCount} vendidos</span>
-              </div>
-
-              {/* Price */}
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl font-bold text-[#007fff]">
-                  R$ {manual.price.toFixed(2)}
-                </span>
-                {manual.originalPrice && (
-                  <span className="text-xl text-gray-400 line-through">
-                    R$ {manual.originalPrice.toFixed(2)}
-                  </span>
-                )}
-              </div>
-
-              {/* Description */}
-              <p className="text-gray-600 leading-relaxed">
-                {manual.description}
-              </p>
-
-              {/* Features */}
-              <div className="grid grid-cols-2 gap-4 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <Download className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Download</p>
-                    <p className="text-sm text-gray-500">Imediato</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Formato</p>
-                    <p className="text-sm text-gray-500">{manual.fileFormat}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Garantia</p>
-                    <p className="text-sm text-gray-500">30 dias</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Acesso</p>
-                    <p className="text-sm text-gray-500">30 dias</p>
-                  </div>
+                <h1 className="text-4xl font-black text-gray-900 leading-tight">
+                  {manual.title}
+                </h1>
+                <div className="flex items-center gap-4 text-sm font-bold">
+                  <div className="flex text-yellow-400"><Star size={16} fill="currentColor"/> <Star size={16} fill="currentColor"/> <Star size={16} fill="currentColor"/> <Star size={16} fill="currentColor"/> <Star size={16} fill="currentColor"/></div>
+                  <span className="text-gray-400">(4.9/5) +500 downloads</span>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button
-                  size="lg"
-                  onClick={handleAddToCart}
-                  disabled={isInCart(manual.id)}
-                  className="flex-1 bg-gradient-to-r from-[#007fff] to-[#0040ff] hover:opacity-90"
-                >
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                  {isInCart(manual.id) ? 'No Carrinho' : 'Adicionar ao Carrinho'}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={handleFavorite}
-                  className={isFavorite(manual.id) ? 'text-red-500 border-red-500' : ''}
-                >
-                  <Heart className={`w-5 h-5 ${isFavorite(manual.id) ? 'fill-current' : ''}`} />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={handleShare}
-                >
-                  <Share2 className="w-5 h-5" />
-                </Button>
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl font-black text-blue-600">R$ {manual.price.toFixed(2)}</span>
+                  <span className="text-xl text-gray-300 line-through">R$ {(manual.price * 1.5).toFixed(2)}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Button size="lg" onClick={() => addToCart(manual)} disabled={isInCart(manual.id)} className="h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-lg shadow-blue-200">
+                    <ShoppingCart className="mr-2" /> {isInCart(manual.id) ? 'No Carrinho' : 'Comprar Agora'}
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={handleFavorite} className={`h-16 rounded-2xl border-2 ${isFavorite(manual.id) ? 'border-red-500 text-red-500' : ''}`}>
+                    <Heart className={isFavorite(manual.id) ? 'fill-current' : ''} />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-center gap-6 pt-4 border-t border-gray-50">
+                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase"><Shield size={16}/> Compra Segura</div>
+                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase"><Download size={16}/> Entrega via E-mail</div>
+                </div>
               </div>
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2">
-                {manual.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="capitalize">
-                    {tag}
-                  </Badge>
+              {/* Detalhes Rápidos */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Formato', val: manual.format || 'PDF', icon: <FileText size={18}/> },
+                  { label: 'Idioma', val: manual.languages?.join(', ') || 'Português', icon: <Globe size={18}/> },
+                  { label: 'Envio', val: 'Imediato', icon: <Clock size={18}/> },
+                  { label: 'Suporte', val: '24/7', icon: <Shield size={18}/> }
+                ].map(item => (
+                  <div key={item.label} className="bg-white p-4 rounded-2xl border border-gray-100 text-center">
+                    <div className="text-blue-600 flex justify-center mb-2">{item.icon}</div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">{item.label}</p>
+                    <p className="text-xs font-black text-gray-900 truncate">{item.val}</p>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="mt-12">
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-                <TabsTrigger 
-                  value="details" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#007fff] data-[state=active]:bg-transparent py-4 px-6"
-                >
-                  Detalhes
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="specs"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#007fff] data-[state=active]:bg-transparent py-4 px-6"
-                >
-                  Especificações
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="reviews"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#007fff] data-[state=active]:bg-transparent py-4 px-6"
-                >
-                  Avaliações
-                </TabsTrigger>
+          {/* Tabs Otimizadas */}
+          <div className="mt-16 bg-white rounded-[32px] p-8 border border-gray-100">
+            <Tabs defaultValue="details">
+              <TabsList className="bg-gray-50 p-1 rounded-xl mb-8">
+                <TabsTrigger value="details" className="rounded-lg font-bold">Conteúdo Técnico</TabsTrigger>
+                <TabsTrigger value="specs" className="rounded-lg font-bold">Especificações</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="details" className="mt-6">
-                <div className="bg-white rounded-2xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold mb-4">Sobre este Manual</h3>
-                  <p className="text-gray-600 leading-relaxed mb-6">
-                    {manual.description}
-                  </p>
-                  <p className="text-gray-600 leading-relaxed">
-                    Este manual contém todas as informações necessárias para operar, 
-                    manter e realizar reparos no seu equipamento. Desenvolvido pela 
-                    fabricante, garante precisão e confiabilidade em todas as informações.
-                  </p>
+              <TabsContent value="details" className="animate-in fade-in">
+                <h3 className="text-2xl font-black mb-4">Sobre este Manual</h3>
+                <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed">
+                  {manual.description}
                 </div>
               </TabsContent>
               
-              <TabsContent value="specs" className="mt-6">
-                <div className="bg-white rounded-2xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold mb-4">Especificações Técnicas</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {[
-                      { label: 'Formato', value: manual.fileFormat },
-                      { label: 'Tamanho', value: manual.fileSize },
-                      { label: 'Idioma', value: manual.language },
-                      { label: 'Páginas', value: manual.pages?.toString() || 'N/A' },
-                      { label: 'Marca', value: manual.brand },
-                      { label: 'Modelo', value: manual.model },
-                      { label: 'Ano', value: manual.year?.toString() || 'N/A' },
-                      { label: 'Categoria', value: manual.category },
-                    ].map((spec) => (
-                      <div key={spec.label} className="flex justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-500">{spec.label}</span>
-                        <span className="font-medium text-gray-900">{spec.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="reviews" className="mt-6">
-                <div className="bg-white rounded-2xl p-8 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-xl font-semibold">Avaliações dos Clientes</h3>
-                      <p className="text-gray-500">Baseado em {manual.reviewCount} avaliações</p>
+              <TabsContent value="specs" className="animate-in fade-in">
+                <div className="grid md:grid-cols-2 gap-x-12 gap-y-4">
+                  {[
+                    { label: 'Categoria', val: manual.category },
+                    { label: 'Subcategoria', val: manual.subcategory },
+                    { label: 'Marca', val: manual.brand },
+                    { label: 'Modelo/Série', val: manual.title.split('-').pop() },
+                  ].map(spec => (
+                    <div key={spec.label} className="flex justify-between py-3 border-b border-gray-50">
+                      <span className="font-bold text-gray-400 uppercase text-[11px]">{spec.label}</span>
+                      <span className="font-black text-gray-900">{spec.val}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-bold text-gray-900">{manual.rating}</span>
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-5 h-5 ${
-                              i < Math.floor(manual.rating)
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-gray-600">
-                    As avaliações são verificadas e publicadas por clientes que 
-                    compraram este manual.
-                  </p>
+                  ))}
                 </div>
               </TabsContent>
             </Tabs>
           </div>
-
-          {/* Related Products */}
-          {relatedManuals.length > 0 && (
-            <div className="mt-16">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Manuais Relacionados
-              </h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {relatedManuals.map((related) => (
-                  <Link
-                    key={related.id}
-                    to={`/manual/${related.id}`}
-                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                  >
-                    <div className="aspect-[3/4] overflow-hidden">
-                      <img
-                        src={related.image}
-                        alt={related.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <p className="text-xs text-[#007fff] font-medium uppercase mb-1">
-                        {related.category}
-                      </p>
-                      <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 group-hover:text-[#007fff] transition-colors">
-                        {related.title}
-                      </h3>
-                      <p className="text-lg font-bold text-[#007fff]">
-                        R$ {related.price.toFixed(2)}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </main>
 
